@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Record</title>
+    <link rel="stylesheet" href="../../plugins/element-ui/index.css" />
+    <link rel="stylesheet" href="../../styles/common.css" />
+    <link rel="stylesheet" href="../../styles/daily_record/add.css" />
+</head>
+<body>
+    <div class="addRecord-container" id="record-add-app">
+        <div class="container">
+            <el-form
+                ref="ruleForm"
+                :model="ruleForm"
+                :inline="false"
+                :rules="rules"
+                label-width="180px"
+            >
+                <el-form-item label="Date" prop="date">
+                    <el-date-picker
+                        v-model="ruleForm.date"
+                        type="date"
+                        placeholder="Choose Date"
+                        format="yyyy-MM-dd"
+                        value-format="yyyy-MM-dd"
+                        @change="handleQuery"
+                    >
+                    </el-date-picker>
+                </el-form-item>
+                <el-form-item label="Meal" prop="meal">
+                    <el-radio-group v-model="ruleForm.meal">
+                        <el-radio label="Breakfast"></el-radio>
+                        <el-radio label="Lunch"></el-radio>
+                        <el-radio label="Dinner"></el-radio>
+                        <el-radio label="Snack"></el-radio>
+                      </el-radio-group>
+                </el-form-item>
+                <el-form-item label="Category" prop="category">
+                    <el-select 
+                        v-model="ruleForm.category" 
+                        placeholder="Choose"
+                        @change="subHandle"
+                    >
+                        <el-option
+                          v-for="item in categories"
+                          :key="item.value"
+                          :label="item.label"
+                          :value="item.value"
+                          >
+                        </el-option>
+                      </el-select>
+                </el-form-item>
+                <el-form-item 
+                    label="Sub-category" 
+                    prop="sub" 
+                    v-if="!(special.includes(ruleForm.category))"
+                >
+                    <el-select v-model="ruleForm.sub" placeholder="Choose" class="sub">
+                        <el-option
+                          v-for="item in subs"
+                          :key="item.value"
+                          :label="item.label"
+                          :value="item"
+                          >
+                        </el-option>
+                    </el-select>
+                    <span
+                    id="comment"
+                    v-if="typeof ruleForm.sub != 'string' && ruleForm.sub.comment != ''"
+                    >
+                        {{ruleForm.sub.comment}}
+                    </span>
+                </el-form-item>
+                <el-form-item
+                    label="Amount" 
+                    prop="amount" 
+                    v-if="!(special.includes(ruleForm.category))"
+                >
+                    <el-input
+                        v-model="ruleForm.amount"
+                        placeholder="Please enter the amount."
+                        class="inputbox"
+                    />
+                    <template slot="append" v-if="typeof this.ruleForm.sub != 'string' ">{{ruleForm.sub.unit}}</template>
+                    <template slot="append" v-else>{{unit}}</template>
+                </el-form-item>
+                <el-form-item label="Food Description" prop="food">
+                    <el-input
+                        v-model="ruleForm.food"
+                        placeholder="Please enter the name of the food."
+                        class="inputbox"
+                    />
+                </el-form-item>
+                <div class="subBox address">
+                    <el-form-item>
+                      <el-button  @click="goBack()">
+                        Cancel
+                      </el-button>
+                      <el-button
+                        type="primary"
+                        @click="submitForm('ruleForm', false)"
+                      >
+                        Save
+                      </el-button>
+                      <el-button
+                        v-if="actionType == 'add'"
+                        type="primary"
+                        class="continue"
+                        @click="submitForm('ruleForm', true)"
+                      >
+                        Save and Continue
+                      </el-button>
+                    </el-form-item>
+                  </div>
+            </el-form>
+        </div>
+    </div>
+
+    <!-- 开发环境版本，包含了有帮助的命令行警告 -->
+    <script src="../../plugins/vue/vue.js"></script>
+    <!-- 引入组件库 -->
+    <script src="../../plugins/element-ui/index.js"></script>
+    <!-- 引入axios -->
+    <script src="../../plugins/axios/axios.min.js"></script>
+    <script src="../../js/request.js"></script>
+    <script src="../../api/record.js"></script>
+    <script src="../../js/index.js"></script>
+    <script src="../../js/validate.js"></script>
+    <script>
+        new Vue({
+            el: '#record-add-app',
+            data() {
+                return {
+                    id: '',
+                    unit: '',
+                    subServing: '',
+                    special: ['Oil', 'Highly-processed Food', 'Other'],
+                    categories: [{
+                        value: 'Grain',
+                        label: 'Grain'
+                    },
+                    {
+                        value: 'Veg/Fr',
+                        label: 'Veg/Fr'
+                    },
+                    {
+                        value: 'Milk/Alt',
+                        label: 'Milk/Alt'
+                    },
+                    {
+                        value: 'Oil',
+                        label: 'Oil'
+                    },
+                    {
+                        value: 'Meat/Alt',
+                        label: 'Meat/Alt'
+                    },
+                    {
+                        value: 'Highly-processed Food',
+                        label: 'Highly-processed Food'
+                    },
+                    {
+                        value: 'Other',
+                        label: 'Other'
+                    }],
+                    subs: [],
+                    ruleForm: {
+                        'date': '',
+                        'meal': 'Breakfast',
+                        'category': '',
+                        'sub': '',
+                        'amount': '',
+                        'food':'',
+                        'serving': '',
+                    }
+                }
+            },
+            computed: {
+                rules() {
+                    return{
+                        'sub': [{'validator': checkSub, 'trigger': 'blur'}],
+                        'amount': [{'validator': checkAmount, 'trigger': 'blur'}],
+                        'food': [{'validator': checkFood, 'trigger': 'blur'}],
+                        'category': [{'validator': checkCat, 'trigger': 'blur'}]
+                    }
+                }
+            },
+            created() {
+                this.getNowTime()
+                this.id = requestUrlParam('id')
+                this.actionType = this.id ? 'edit' : 'add'
+                if (this.id) {
+                    this.init()
+                }
+            },
+            mounted(){
+            },
+            methods: {
+                async init () {
+                    queryRecordById(this.id).then(res => {
+                    if (String(res.code) === '1') {
+                        this.ruleForm = res.data
+                        this.ruleForm.category = ''
+                        this.ruleForm.sub = ''
+                        if (res.data.unit === '1') {
+                            console.log(typeof this.ruleForm.sub != "string")
+                            this.unit = 'g'
+                            this.ruleForm.amount = res.data.amount.slice(0, -1)
+                        } else {
+                            console.log(typeof this.ruleForm.sub != "string")
+                            this.unit = 'mL'
+                            console.log(typeof this.ruleForm.sub)
+                            this.ruleForm.amount = res.data.amount.slice(0, -2)
+                        }
+                    } else {
+                        this.$message.error(res.msg || 'Operation Failed')
+                    }
+                    })
+                },
+                subHandle() {
+                    const params = {
+                        category: this.ruleForm.category
+                    }
+                    querySub(params).then(res => {
+                        if (String(res.code) === '1') {
+                            this.subs = res.data || []
+                            console.log(res.data)
+                        }
+                    }).catch(err => {
+                        this.$message.error('Error：' + err)
+                    })
+                },
+                submitForm (formName, st) {
+                    this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        if (this.actionType === 'add') {
+                            this.subServing = this.ruleForm.sub.serving
+                            const params = {
+                                ...this.ruleForm,
+                                sub: this.ruleForm.sub.value,
+                                amount: this.ruleForm.amount + this.ruleForm.sub.unit,
+                                unit: this.ruleForm.sub.unit == 'g' ? 1 : 2,
+                                serving: Math.round(parseFloat(this.ruleForm.amount) * 100/this.subServing)/100
+                            }
+                            addRecord(params).then(res => {
+                                if (res.code === 1) {
+                                    this.$message.success('Add successfully')
+                                    if (!st) {
+                                        this.goBack()
+                                    } else {
+                                        this.ruleForm = {
+                                            'date': '',
+                                            'meal': 'Breakfast',
+                                            'category': '',
+                                            'sub': '',
+                                            'amount': '',
+                                            'food':''
+                                        }
+                                    }
+                                } else {
+                                    this.$message.error(res.msg || 'Operation error')
+                                }
+                            })
+                        } else {
+                            this.subServing = this.ruleForm.sub.serving
+                            const params = {
+                                ...this.ruleForm,
+                                sub: this.ruleForm.sub.value,
+                                amount: typeof this.ruleForm.sub != 'string' ? this.ruleForm.amount + this.ruleForm.sub.unit : this.ruleForm.amount + this.unit,
+                                unit: this.ruleForm.sub.unit == 'g' ? 1 : 2,
+                                serving: Math.round(parseFloat(this.ruleForm.amount) * 100/this.subServing)/100
+                            }
+                            console.log(params)
+                            editRecord(params).then(res => {
+                                if (res.code === 1) {
+                                    this.$message.success('Edit successfully')
+                                    this.goBack()
+                                } else {
+                                    this.$message.error(res.msg || 'Operation failed')
+                                }
+                            })
+                        }
+                    } else {
+                        console.log('error submit!!')
+                        return false
+                    }
+                    })
+                },
+                goBack(){
+                    window.parent.menuHandle({
+                    id: '2',
+                    url: 'pages/daily_record/list.html',
+                    name: 'Daily Record'
+                    },false)
+                },
+                getNowTime() {
+                    let now = new Date();
+                    let year = now.getFullYear();
+                    let month = now.getMonth() + 1;
+                    let date = now.getDate();
+                    month = month.toString().padStart(2, "0");
+                    date = date.toString().padStart(2, "0");
+                    let defaultDate = `${year}-${month}-${date}`;
+                    this.ruleForm.date = defaultDate;
+                    console.log(this.ruleForm.date);
+                }
+            }
+        })
+    </script>
+</body>
+</html>

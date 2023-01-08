@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Record - Login</title>
+    <link rel="stylesheet" href="../../plugins/element-ui/index.css" />
+    <link rel="stylesheet" href="../styles/common.css">
+    <link rel="stylesheet" href="../styles/login.css">
+</head>
+<body>
+    <div class="login" id="login-app">
+        
+        <div class="login-box">
+            <h1>Login</h1>
+            <div class="login-form">
+                <el-form ref="loginForm" :model="loginForm" :rules="loginRules">
+                    <el-form-item prop="username">
+                        <label class="label1">UserName</label>
+                        <el-input 
+                        v-model="loginForm.username" 
+                        type="text"
+                        auto-complete="off"
+                        maxlength="10" />
+                    </el-form-item>
+                    <el-form-item prop="password">
+                        <label>Password</label>
+                        <el-input
+                        v-model="loginForm.password"
+                        type="password"
+                        maxlength="30"
+                        @keyup.enter.native="handleLogin"/>
+                    </el-form-item>
+                    <el-form-item style="width:100%;">
+                        <el-button 
+                        :loading="loading" 
+                        class="login-btn" 
+                        size="medium" 
+                        type="primary" 
+                        @click.native.prevent="handleLogin">
+                          <span v-if="!loading">Login</span>
+                          <span v-else>Loading</span>
+                        </el-button>
+                      </el-form-item>
+                      <el-form-item id="signup">
+                        Not a member?
+                        <a v-bind:href="url">Sign Up</a>
+                      </el-form-item>
+                </el-form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../plugins/vue/vue.js"></script>
+    <script src="../plugins/element-ui/index.js"></script>
+    <script src="../plugins/axios/axios.min.js"></script>
+    <script src="../js/request.js"></script>
+    <script src="../js/validate.js"></script>
+    <script src="../api/login.js"></script>
+    
+
+
+    <script>
+    new Vue({
+      el: '#login-app',
+      data() {
+        return {
+          loginForm:{
+            username: 'hecate',
+            password: 'lxy1231*'
+          },
+          loading: false,
+          url: ''
+        }
+      },
+      computed: {
+        loginRules() {
+          const validateUsername = (rule, value, callback) => {
+            if (value.length < 1 ) {
+              callback(new Error('Please enter username'))
+            } else {
+              callback()
+            }
+          }
+          const validatePassword = (rule, value, callback) => {
+            if (value.length < 6) {
+              callback(new Error('Password must be longer than 6 characters'))
+            } else {
+              callback()
+            }
+          }
+          return {
+            'username': [{ 'validator': validateUsername, 'trigger': 'blur' }],
+            'password': [{ 'validator': validatePassword, 'trigger': 'blur' }]
+          }
+        }
+      },
+      created() {
+      },
+      methods: {
+        async handleLogin() {
+          this.$refs.loginForm.validate(async (valid) => {
+            if (valid) {
+              this.loading = true
+              let res = await loginApi(this.loginForm)
+              if (String(res.code) === '1') {
+                localStorage.setItem('userInfo',JSON.stringify(res.data))
+                window.location.href= '../index.html'
+              } else {
+                this.$message.error(res.msg)
+                this.loading = false
+              }
+            }
+          })
+        }
+      }
+    })
+    </script>
+</body>
+</html>
